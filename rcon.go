@@ -58,10 +58,6 @@ func (p Packet) Compile() (payload []byte, err error) {
   return buffer.Bytes(), nil
 }
 
-func DecompileResponse(response []byte) Packet {
-  return Packet{}
-}
-
 func NewPacket(id, typ int32, body string) (packet *Packet) {
   size := int32(len([]byte(body)) + 14)
   return &Packet{Header{size, id, typ}, body}
