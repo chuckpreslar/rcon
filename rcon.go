@@ -1,3 +1,5 @@
+// Package rcon implements the communication protocol for communicating
+// with RCON servers. Tested and working with Valve game servers.
 package rcon
 
 import (
@@ -12,6 +14,20 @@ import (
 const (
   PACKET_PADDING_SIZE = 2
   PACKET_HEADER_SIZE  = 8
+)
+
+type CommandType int32
+
+const (
+  EXEC_COMMAND CommandType = 2
+  AUTH         CommandType = 3
+)
+
+type ResponseType int32
+
+const (
+  AUTH_RESPONSE  ResponseType = 2
+  RESPONSE_VALUE ResponseType = 0
 )
 
 var (
@@ -40,6 +56,10 @@ type Packet struct {
   Body   string
 }
 
+// Compile converts a packets header and body into its approriate
+// byte array payload, returning an error if the binary packages
+// Write method fails to write the header bytes as their little
+// endian byte order.
 func (p Packet) Compile() (payload []byte, err error) {
   var size int32 = p.Header.Size
   var buffer bytes.Buffer
@@ -59,21 +79,28 @@ func (p Packet) Compile() (payload []byte, err error) {
   return buffer.Bytes(), nil
 }
 
+// NewPacket returns a pointer to a new Packet type.
 func NewPacket(challenge, typ int32, body string) (packet *Packet) {
   size := int32(len([]byte(body)) + 10)
   return &Packet{Header{size, challenge, typ}, body}
 }
 
+// Authorize calls Execute with the appropriate CommandType and the provided
+// password.  The response packet is returned if authorization is successful,
+// or a potential error.
 func (c *Client) Authorize(password string) (response *Packet, err error) {
-  if response, err = c.Execute(3, password); nil == err {
+  if response, err = c.Execute(AUTH, password); nil == err {
     c.Authorized = true
   }
 
   return
 }
 
+// Execute sends the command to execute to the clients server, decompiling
+// the response's bytes into a Packet type for return.  An error is returned
+// if Execute fails.
 func (c *Client) Execute(typ int32, command string) (response *Packet, err error) {
-  if typ != 3 && !c.Authorized {
+  if typ != AUTH && !c.Authorized {
     err = ErrUnauthorizedRequest
     return
   }
@@ -102,7 +129,7 @@ func (c *Client) Execute(typ int32, command string) (response *Packet, err error
     return
   }
 
-  if packet.Header.Type == 3 && header.Type == 0 {
+  if packet.Header.Type == AUTH && header.Type == RESPONSE_VALUE {
     // Discard, empty SERVERDATA_RESPONSE_VALUE from authorization.
     c.Connection.Read(make([]byte, header.Size-PACKET_HEADER_SIZE))
 
@@ -139,6 +166,9 @@ func (c *Client) Execute(typ int32, command string) (response *Packet, err error
   return
 }
 
+// NewClient creates a new Client type, creating the connection
+// to the server specified by the host and port arguements. If
+// the connection fails, an error is returned.
 func NewClient(host string, port int) (client *Client, err error) {
   client = new(Client)
   client.Host = host
