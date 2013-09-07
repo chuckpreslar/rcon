@@ -36,7 +36,7 @@ func main() {
     panic(err)
   }
   
-  packet, err = client.Execute(rcon.EXECCOMMAND /* Type of command to execute */, "command" /* The command to run */)
+  packet, err = client.Execute(rcon.EXEC_COMMAND /* Type of command to execute */, "command" /* The command to run */)
   
   if nil != err {
     // Failed to execute command
