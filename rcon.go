@@ -16,18 +16,11 @@ const (
   PACKET_HEADER_SIZE  = 8
 )
 
-type CommandType int32
-
 const (
-  EXEC_COMMAND CommandType = 2
-  AUTH         CommandType = 3
-)
-
-type ResponseType int32
-
-const (
-  AUTH_RESPONSE  ResponseType = 2
-  RESPONSE_VALUE ResponseType = 0
+  EXEC_COMMAND   int32 = 2
+  AUTH           int32 = 3
+  AUTH_RESPONSE  int32 = 2
+  RESPONSE_VALUE int32 = 0
 )
 
 var (
