@@ -19,10 +19,10 @@ type Header struct {
 
 type Packet struct {
   header Header
-  body   []byte
+  body   string
 }
 
-func (p Packet) Package() (b []byte, e error) {
+func (p Packet) Compile() (b []byte, e error) {
   var buffer bytes.Buffer
   e = binary.Write(&buffer, binary.LittleEndian, &p.header)
 
@@ -30,15 +30,14 @@ func (p Packet) Package() (b []byte, e error) {
     return
   }
 
-  buffer.Write(p.body)
-
+  buffer.Write([]byte(p.body))
   return buffer.Bytes(), nil
 }
 
 func NewPacket(id, typ int32, body string) (packet *Packet) {
   content := []byte(body)
-  size := int32(len(content) + 12)
-  return &Packet{Header{size, id, typ}, content}
+  size := int32(len(content) + 14)
+  return &Packet{Header{size - 4, id, typ}, content}
 }
 
 func (c *Client) Authorize(password string) *Client {
