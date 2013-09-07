@@ -6,10 +6,12 @@ import (
   "errors"
   "fmt"
   "net"
+  "strings"
 )
 
 const (
-  PACKET_PADDING = 2
+  PACKET_PADDING_SIZE = 2
+  PACKET_HEADER_SIZE  = 8
 )
 
 var (
@@ -39,7 +41,7 @@ type Packet struct {
 func (p Packet) Compile() (payload []byte, err error) {
   var size int32 = p.Header.Size - 4
   var buffer bytes.Buffer
-  var padding [PACKET_PADDING]byte
+  var padding [PACKET_PADDING_SIZE]byte
 
   if err = binary.Write(&buffer, binary.LittleEndian, &size); nil != err {
     return
@@ -78,15 +80,15 @@ func (c *Client) Execute(typ int32, command string) (response *Packet, err error
   packet := NewPacket(int32(c.CommandsSent), typ, command)
   payload, err := packet.Compile()
 
-  var read int
+  var n int
 
   if nil != err {
     return
-  } else if read, err = c.Connection.Write(payload); nil != err {
+  } else if n, err = c.Connection.Write(payload); nil != err {
     err = ErrInvalidWrite
     return
   }
-  // var header Header
+
   var header Header
 
   if err = binary.Read(c.Connection, binary.LittleEndian, &header.Size); nil != err {
@@ -99,7 +101,7 @@ func (c *Client) Execute(typ int32, command string) (response *Packet, err error
 
   if packet.Header.Type == 3 && header.Type == 0 {
     // Discard, empty SERVERDATA_RESPONSE_VALUE from authorization.
-    c.Connection.Read(make([]byte, header.Size+PACKET_PADDING))
+    c.Connection.Read(make([]byte, header.Size-PACKET_HEADER_SIZE))
 
     // Reread the packet header.
     if err = binary.Read(c.Connection, binary.LittleEndian, &header.Size); nil != err {
@@ -111,17 +113,20 @@ func (c *Client) Execute(typ int32, command string) (response *Packet, err error
     }
   }
 
-  body := make([]byte, header.Size+PACKET_PADDING)
+  body := make([]byte, header.Size-PACKET_HEADER_SIZE)
 
-  read, err = c.Connection.Read(body)
+  n, err = c.Connection.Read(body)
 
   if nil != err {
+    return
+  } else if n != len(body) {
+    err = ErrInvalidRead
     return
   }
 
   response = new(Packet)
   response.Header = header
-  response.Body = string(body)
+  response.Body = strings.TrimRight(string(body), "\x00")
 
   return
 }
