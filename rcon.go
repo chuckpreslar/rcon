@@ -15,9 +15,10 @@ const (
 )
 
 var (
-  ErrInvalidWrite     = errors.New("Failed to write the payload corretly to remote connection.")
-  ErrInvalidRead      = errors.New("Failed to read the response corretly from remote connection.")
-  ErrInvalidChallenge = errors.New("Server failed to mirror request challenge.")
+  ErrInvalidWrite        = errors.New("Failed to write the payload corretly to remote connection.")
+  ErrInvalidRead         = errors.New("Failed to read the response corretly from remote connection.")
+  ErrInvalidChallenge    = errors.New("Server failed to mirror request challenge.")
+  ErrUnauthorizedRequest = errors.New("Client not authorized to remote server.")
 )
 
 type Client struct {
@@ -58,9 +59,9 @@ func (p Packet) Compile() (payload []byte, err error) {
   return buffer.Bytes(), nil
 }
 
-func NewPacket(id, typ int32, body string) (packet *Packet) {
+func NewPacket(challenge, typ int32, body string) (packet *Packet) {
   size := int32(len([]byte(body)) + 10)
-  return &Packet{Header{size, id, typ}, body}
+  return &Packet{Header{size, challenge, typ}, body}
 }
 
 func (c *Client) Authorize(password string) (response *Packet, err error) {
@@ -72,6 +73,11 @@ func (c *Client) Authorize(password string) (response *Packet, err error) {
 }
 
 func (c *Client) Execute(typ int32, command string) (response *Packet, err error) {
+  if typ != 3 && !c.Authorized {
+    err = ErrUnauthorizedRequest
+    return
+  }
+
   c.ChallengeIndex += 1
 
   packet := NewPacket(int32(c.ChallengeIndex), typ, command)
