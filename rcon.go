@@ -40,7 +40,7 @@ type Packet struct {
 }
 
 func (p Packet) Compile() (payload []byte, err error) {
-  var size int32 = p.Header.Size - 4
+  var size int32 = p.Header.Size
   var buffer bytes.Buffer
   var padding [PACKET_PADDING_SIZE]byte
 
@@ -59,7 +59,7 @@ func (p Packet) Compile() (payload []byte, err error) {
 }
 
 func NewPacket(id, typ int32, body string) (packet *Packet) {
-  size := int32(len([]byte(body)) + 14)
+  size := int32(len([]byte(body)) + 10)
   return &Packet{Header{size, id, typ}, body}
 }
 
