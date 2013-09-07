@@ -35,30 +35,31 @@ var (
   ErrInvalidRead         = errors.New("Failed to read the response corretly from remote connection.")
   ErrInvalidChallenge    = errors.New("Server failed to mirror request challenge.")
   ErrUnauthorizedRequest = errors.New("Client not authorized to remote server.")
+  ErrFailedAuthorization = errors.New("Failed to authorize to the remote server.")
 )
 
 type Client struct {
-  Host           string
-  Port           int
-  ChallengeIndex int
-  Authorized     bool
-  Connection     net.Conn
+  Host           string   // The IP address of the remote server.
+  Port           int      // The Port the remote server's listening on.
+  ChallengeIndex int      // The current ChallengeIndex used to ensure server mirrors correctly.
+  Authorized     bool     // Has the client been authorized by the server?
+  Connection     net.Conn // The TCP connection to the server.
 }
 
 type Header struct {
-  Size      int32
-  Challenge int32
-  Type      int32
+  Size      int32 // The size of the payload.
+  Challenge int32 // The challenge ths server should mirror.
+  Type      int32 // The type of request being sent.
 }
 
 type Packet struct {
-  Header Header
-  Body   string
+  Header Header // Packet header.
+  Body   string // Body of packet.
 }
 
 // Compile converts a packets header and body into its approriate
 // byte array payload, returning an error if the binary packages
-// Write method fails to write the header bytes as their little
+// Write method fails to write the header bytes in their little
 // endian byte order.
 func (p Packet) Compile() (payload []byte, err error) {
   var size int32 = p.Header.Size
@@ -90,7 +91,13 @@ func NewPacket(challenge, typ int32, body string) (packet *Packet) {
 // or a potential error.
 func (c *Client) Authorize(password string) (response *Packet, err error) {
   if response, err = c.Execute(AUTH, password); nil == err {
-    c.Authorized = true
+    if response.Header.Type == AUTH_RESPONSE {
+      c.Authorized = true
+    } else {
+      err = ErrFailedAuthorization
+      response = nil
+      return
+    }
   }
 
   return
