@@ -12,6 +12,10 @@ import (
 )
 
 const (
+  MAX_CHALLENGE_INDEX int32 = 4294967295
+)
+
+const (
   PACKET_PADDING_SIZE = 2
   PACKET_HEADER_SIZE  = 8
 )
@@ -34,7 +38,7 @@ var (
 type Client struct {
   Host           string   // The IP address of the remote server.
   Port           int      // The Port the remote server's listening on.
-  ChallengeIndex int      // The current ChallengeIndex used to ensure server mirrors correctly.
+  ChallengeIndex int32    // The current ChallengeIndex used to ensure server mirrors correctly.
   Authorized     bool     // Has the client been authorized by the server?
   Connection     net.Conn // The TCP connection to the server.
 }
@@ -79,7 +83,7 @@ func NewPacket(challenge, typ int32, body string) (packet *Packet) {
   return &Packet{Header{size, challenge, typ}, body}
 }
 
-// Authorize calls Execute with the appropriate CommandType and the provided
+// Authorize calls Execute with the appropriate command type and the provided
 // password.  The response packet is returned if authorization is successful,
 // or a potential error.
 func (c *Client) Authorize(password string) (response *Packet, err error) {
@@ -105,9 +109,15 @@ func (c *Client) Execute(typ int32, command string) (response *Packet, err error
     return
   }
 
-  c.ChallengeIndex += 1
+  // Make sure we're not going to overflow the challenge index
+  // for long running applications.
+  if c.ChallengeIndex+1 <= MAX_CHALLENGE_INDEX {
+    c.ChallengeIndex += 1
+  } else {
+    c.ChallengeIndex = 0
+  }
 
-  packet := NewPacket(int32(c.ChallengeIndex), typ, command)
+  packet := NewPacket(c.ChallengeIndex, typ, command)
   payload, err := packet.Compile()
 
   var n int
