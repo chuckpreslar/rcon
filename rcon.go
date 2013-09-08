@@ -83,8 +83,8 @@ func NewPacket(challenge, typ int32, body string) (packet *Packet) {
   return &Packet{Header{size, challenge, typ}, body}
 }
 
-// Authorize calls Execute with the appropriate command type and the provided
-// password.  The response packet is returned if authorization is successful,
+// Authorize calls Send with the appropriate command type and the provided
+// password.  The response packet is returned if authorization is successful
 // or a potential error.
 func (c *Client) Authorize(password string) (response *Packet, err error) {
   if response, err = c.Execute(AUTH, password); nil == err {
@@ -100,10 +100,18 @@ func (c *Client) Authorize(password string) (response *Packet, err error) {
   return
 }
 
-// Execute sends the command to execute to the clients server, decompiling
-// the response's bytes into a Packet type for return.  An error is returned
-// if Execute fails.
-func (c *Client) Execute(typ int32, command string) (response *Packet, err error) {
+// Execute calls Send with the appropriate command type and the provided
+// command.  The response packet is returned if the command executed successfully
+// or a potential error.
+func (c *Client) Execute(command string) (response *Packet, err error) {
+  return c.Send(EXEC_COMMAND, command)
+}
+
+// Sends accepts the commands type and its string to execute to the clients server,
+// creating a packet and compiling its payload bytes in the appropriate order.
+// The resonse is decompiled from its bytes into a Packet type for return.
+// An error is returned if send fails.
+func (c *Client) Send(typ int32, command string) (response *Packet, err error) {
   if typ != AUTH && !c.Authorized {
     err = ErrUnauthorizedRequest
     return
