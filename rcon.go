@@ -4,15 +4,12 @@ package rcon
 
 import (
   "bytes"
+  "crypto/rand"
   "encoding/binary"
   "errors"
   "fmt"
   "net"
   "strings"
-)
-
-const (
-  MAX_CHALLENGE_INDEX int32 = 4294967295
 )
 
 const (
@@ -36,11 +33,10 @@ var (
 )
 
 type Client struct {
-  Host           string   // The IP address of the remote server.
-  Port           int      // The Port the remote server's listening on.
-  ChallengeIndex int32    // The current ChallengeIndex used to ensure server mirrors correctly.
-  Authorized     bool     // Has the client been authorized by the server?
-  Connection     net.Conn // The TCP connection to the server.
+  Host       string   // The IP address of the remote server.
+  Port       int      // The Port the remote server's listening on.
+  Authorized bool     // Has the client been authorized by the server?
+  Connection net.Conn // The TCP connection to the server.
 }
 
 type Header struct {
@@ -108,24 +104,23 @@ func (c *Client) Execute(command string) (response *Packet, err error) {
 }
 
 // Sends accepts the commands type and its string to execute to the clients server,
-// creating a packet and compiling its payload bytes in the appropriate order.
-// The resonse is decompiled from its bytes into a Packet type for return.
-// An error is returned if send fails.
+// creating a packet with a random challenge id for the server to mirror,
+// and compiling its payload bytes in the appropriate order. The resonse is
+// decompiled from its bytes into a Packet type for return. An error is returned
+// if send fails.
 func (c *Client) Send(typ int32, command string) (response *Packet, err error) {
   if typ != AUTH && !c.Authorized {
     err = ErrUnauthorizedRequest
     return
   }
 
-  // Make sure we're not going to overflow the challenge index
-  // for long running applications.
-  if c.ChallengeIndex+1 <= MAX_CHALLENGE_INDEX {
-    c.ChallengeIndex += 1
-  } else {
-    c.ChallengeIndex = 0
-  }
+  // Create a random challenge for the server to mirror in its response.
+  var challenge int32
+  binary.Read(rand.Reader, binary.LittleEndian, &challenge)
 
-  packet := NewPacket(c.ChallengeIndex, typ, command)
+  // Create the packet from the challenge, typ and command
+  // and compile it to its byte payload
+  packet := NewPacket(challenge, typ, command)
   payload, err := packet.Compile()
 
   var n int
