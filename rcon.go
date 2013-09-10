@@ -13,10 +13,16 @@ import (
 )
 
 const (
-  PACKET_PADDING_SIZE = 2
-  PACKET_HEADER_SIZE  = 8
+  PACKET_PADDING_SIZE = 2 // Size of Packet's padding.
+  PACKET_HEADER_SIZE  = 8 // Size of Packet's header.
 )
 
+const (
+  TERMINATION_SEQUENCE = "\x00" // Null empty ASCII string suffix.
+)
+
+// Packet type constants.
+// https://developer.valvesoftware.com/wiki/Source_RCON_Protocol#Packet_Type
 const (
   EXEC_COMMAND   int32 = 2
   AUTH           int32 = 3
@@ -24,6 +30,7 @@ const (
   RESPONSE_VALUE int32 = 0
 )
 
+// Rcon package errors.
 var (
   ErrInvalidWrite        = errors.New("Failed to write the payload corretly to remote connection.")
   ErrInvalidRead         = errors.New("Failed to read the response corretly from remote connection.")
@@ -75,7 +82,7 @@ func (p Packet) Compile() (payload []byte, err error) {
 
 // NewPacket returns a pointer to a new Packet type.
 func NewPacket(challenge, typ int32, body string) (packet *Packet) {
-  size := int32(len([]byte(body)) + 10)
+  size := int32(len([]byte(body)) + PACKET_HEADER_SIZE + PACKET_PADDING_SIZE)
   return &Packet{Header{size, challenge, typ}, body}
 }
 
@@ -176,7 +183,7 @@ func (c *Client) Send(typ int32, command string) (response *Packet, err error) {
 
   response = new(Packet)
   response.Header = header
-  response.Body = strings.TrimRight(string(body), "\x00")
+  response.Body = strings.TrimRight(string(body), TERMINATION_SEQUENCE)
 
   return
 }
