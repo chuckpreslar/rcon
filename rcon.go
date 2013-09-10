@@ -128,6 +128,8 @@ func (c *Client) Send(typ int32, command string) (response *Packet, err error) {
   if nil != err {
     return
   } else if n, err = c.Connection.Write(payload); nil != err {
+    return
+  } else if n != len(payload) {
     err = ErrInvalidWrite
     return
   }
@@ -186,7 +188,6 @@ func NewClient(host string, port int) (client *Client, err error) {
   client = new(Client)
   client.Host = host
   client.Port = port
-  client.ChallengeIndex = 0
   client.Connection, err = net.Dial("tcp", fmt.Sprintf("%v:%v", client.Host, client.Port))
   return
 }
