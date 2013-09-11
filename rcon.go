@@ -90,7 +90,7 @@ func NewPacket(challenge, typ int32, body string) (packet *Packet) {
 // password.  The response packet is returned if authorization is successful
 // or a potential error.
 func (c *Client) Authorize(password string) (response *Packet, err error) {
-  if response, err = c.Execute(AUTH, password); nil == err {
+  if response, err = c.Send(AUTH, password); nil == err {
     if response.Header.Type == AUTH_RESPONSE {
       c.Authorized = true
     } else {
