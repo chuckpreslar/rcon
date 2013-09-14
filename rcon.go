@@ -54,7 +54,7 @@ type Header struct {
 
 type Packet struct {
   header Header // Packet header.
-  body   string // Body of packet.
+  Body   string // Body of packet.
 }
 
 // Compile converts a packets header and body into its approriate
