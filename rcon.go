@@ -40,20 +40,20 @@ var (
 )
 
 type Client struct {
-  host       string   // The IP address of the remote server.
-  port       int      // The Port the remote server's listening on.
-  authorized bool     // Has the client been authorized by the server?
-  connection net.Conn // The TCP connection to the server.
+  Host       string   // The IP address of the remote server.
+  Port       int      // The Port the remote server's listening on.
+  Authorized bool     // Has the client been authorized by the server?
+  Connection net.Conn // The TCP connection to the server.
 }
 
 type Header struct {
-  size      int32 // The size of the payload.
-  challenge int32 // The challenge ths server should mirror.
-  typ       int32 // The type of request being sent.
+  Size      int32 // The size of the payload.
+  Challenge int32 // The challenge ths server should mirror.
+  Type      int32 // The type of request being sent.
 }
 
 type Packet struct {
-  header Header // Packet header.
+  Header Header // Packet header.
   Body   string // Body of packet.
 }
 
@@ -62,19 +62,19 @@ type Packet struct {
 // Write method fails to write the header bytes in their little
 // endian byte order.
 func (p Packet) Compile() (payload []byte, err error) {
-  var size int32 = p.header.size
+  var size int32 = p.Header.Size
   var buffer bytes.Buffer
   var padding [PACKET_PADDING_SIZE]byte
 
   if err = binary.Write(&buffer, binary.LittleEndian, &size); nil != err {
     return
-  } else if err = binary.Write(&buffer, binary.LittleEndian, &p.header.challenge); nil != err {
+  } else if err = binary.Write(&buffer, binary.LittleEndian, &p.Header.Challenge); nil != err {
     return
-  } else if err = binary.Write(&buffer, binary.LittleEndian, &p.header.typ); nil != err {
+  } else if err = binary.Write(&buffer, binary.LittleEndian, &p.Header.Type); nil != err {
     return
   }
 
-  buffer.WriteString(p.body)
+  buffer.WriteString(p.Body)
   buffer.Write(padding[:])
 
   return buffer.Bytes(), nil
@@ -90,8 +90,8 @@ func NewPacket(challenge, typ int32, body string) (packet *Packet) {
 // password.  The response packet is returned if authorization is successful
 // or a potential error.
 func (c *Client) Authorize(password string) (response *Packet, err error) {
-  if response, err = c.send(AUTH, password); nil == err {
-    if response.header.typ == AUTH_RESPONSE {
+  if response, err = c.Send(AUTH, password); nil == err {
+    if response.Header.Type == AUTH_RESPONSE {
       c.Authorized = true
     } else {
       err = ErrFailedAuthorization
@@ -107,10 +107,10 @@ func (c *Client) Authorize(password string) (response *Packet, err error) {
 // command.  The response packet is returned if the command executed successfully
 // or a potential error.
 func (c *Client) Execute(command string) (response *Packet, err error) {
-  return c.send(EXEC_COMMAND, command)
+  return c.Send(EXEC_COMMAND, command)
 }
 
-// Send accepts the commands type and its string to execute to the clients server,
+// Sends accepts the commands type and its string to execute to the clients server,
 // creating a packet with a random challenge id for the server to mirror,
 // and compiling its payload bytes in the appropriate order. The resonse is
 // decompiled from its bytes into a Packet type for return. An error is returned
@@ -134,7 +134,7 @@ func (c *Client) Send(typ int32, command string) (response *Packet, err error) {
 
   if nil != err {
     return
-  } else if n, err = c.connection.Write(payload); nil != err {
+  } else if n, err = c.Connection.Write(payload); nil != err {
     return
   } else if n != len(payload) {
     err = ErrInvalidWrite
@@ -143,36 +143,36 @@ func (c *Client) Send(typ int32, command string) (response *Packet, err error) {
 
   var header Header
 
-  if err = binary.Read(c.connection, binary.LittleEndian, &header.size); nil != err {
+  if err = binary.Read(c.Connection, binary.LittleEndian, &header.Size); nil != err {
     return
-  } else if err = binary.Read(c.connection, binary.LittleEndian, &header.challenge); nil != err {
+  } else if err = binary.Read(c.Connection, binary.LittleEndian, &header.Challenge); nil != err {
     return
-  } else if err = binary.Read(c.connection, binary.LittleEndian, &header.typ); nil != err {
+  } else if err = binary.Read(c.Connection, binary.LittleEndian, &header.Type); nil != err {
     return
   }
 
-  if packet.header.typ == AUTH && header.typ == RESPONSE_VALUE {
+  if packet.Header.Type == AUTH && header.Type == RESPONSE_VALUE {
     // Discard, empty SERVERDATA_RESPONSE_VALUE from authorization.
-    c.connection.Read(make([]byte, header.size-PACKET_HEADER_SIZE))
+    c.Connection.Read(make([]byte, header.Size-PACKET_HEADER_SIZE))
 
     // Reread the packet header.
-    if err = binary.Read(c.connection, binary.LittleEndian, &header.size); nil != err {
+    if err = binary.Read(c.Connection, binary.LittleEndian, &header.Size); nil != err {
       return
-    } else if err = binary.Read(c.connection, binary.LittleEndian, &header.challenge); nil != err {
+    } else if err = binary.Read(c.Connection, binary.LittleEndian, &header.Challenge); nil != err {
       return
-    } else if err = binary.Read(c.connection, binary.LittleEndian, &header.typ); nil != err {
+    } else if err = binary.Read(c.Connection, binary.LittleEndian, &header.Type); nil != err {
       return
     }
   }
 
-  if header.challenge != packet.header.challenge {
+  if header.Challenge != packet.Header.Challenge {
     err = ErrInvalidChallenge
     return
   }
 
-  body := make([]byte, header.size-PACKET_HEADER_SIZE)
+  body := make([]byte, header.Size-PACKET_HEADER_SIZE)
 
-  n, err = c.connection.Read(body)
+  n, err = c.Connection.Read(body)
 
   if nil != err {
     return
@@ -182,8 +182,8 @@ func (c *Client) Send(typ int32, command string) (response *Packet, err error) {
   }
 
   response = new(Packet)
-  response.header = header
-  response.body = strings.TrimRight(string(body), TERMINATION_SEQUENCE)
+  response.Header = header
+  response.Body = strings.TrimRight(string(body), TERMINATION_SEQUENCE)
 
   return
 }
@@ -193,8 +193,8 @@ func (c *Client) Send(typ int32, command string) (response *Packet, err error) {
 // the connection fails, an error is returned.
 func NewClient(host string, port int) (client *Client, err error) {
   client = new(Client)
-  client.host = host
-  client.port = port
-  client.connection, err = net.Dial("tcp", fmt.Sprintf("%v:%v", client.host, client.port))
+  client.Host = host
+  client.Port = port
+  client.Connection, err = net.Dial("tcp", fmt.Sprintf("%v:%v", client.Host, client.Port))
   return
 }
