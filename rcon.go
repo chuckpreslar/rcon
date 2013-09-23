@@ -13,8 +13,8 @@ import (
 )
 
 const (
-  PACKET_PADDING_SIZE = 2 // Size of Packet's padding.
-  PACKET_HEADER_SIZE  = 8 // Size of Packet's header.
+  PacketPaddingSize uint8 = 2 // Size of Packet's padding.
+  PacketHeaderSize  uint8 = 8 // Size of Packet's header.
 )
 
 const (
@@ -64,7 +64,7 @@ type Packet struct {
 func (p Packet) Compile() (payload []byte, err error) {
   var size int32 = p.Header.Size
   var buffer bytes.Buffer
-  var padding [PACKET_PADDING_SIZE]byte
+  var padding [PacketPaddingSize]byte
 
   if err = binary.Write(&buffer, binary.LittleEndian, &size); nil != err {
     return
@@ -82,7 +82,7 @@ func (p Packet) Compile() (payload []byte, err error) {
 
 // NewPacket returns a pointer to a new Packet type.
 func NewPacket(challenge, typ int32, body string) (packet *Packet) {
-  size := int32(len([]byte(body)) + PACKET_HEADER_SIZE + PACKET_PADDING_SIZE)
+  size := int32(len([]byte(body)) + PacketHeaderSize + PacketPaddingSize)
   return &Packet{Header{size, challenge, typ}, body}
 }
 
@@ -153,7 +153,7 @@ func (c *Client) Send(typ int32, command string) (response *Packet, err error) {
 
   if packet.Header.Type == AUTH && header.Type == RESPONSE_VALUE {
     // Discard, empty SERVERDATA_RESPONSE_VALUE from authorization.
-    c.Connection.Read(make([]byte, header.Size-PACKET_HEADER_SIZE))
+    c.Connection.Read(make([]byte, header.Size-PacketHeaderSize))
 
     // Reread the packet header.
     if err = binary.Read(c.Connection, binary.LittleEndian, &header.Size); nil != err {
@@ -170,7 +170,7 @@ func (c *Client) Send(typ int32, command string) (response *Packet, err error) {
     return
   }
 
-  body := make([]byte, header.Size-PACKET_HEADER_SIZE)
+  body := make([]byte, header.Size-PacketHeaderSize)
 
   n, err = c.Connection.Read(body)
 
