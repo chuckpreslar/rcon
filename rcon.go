@@ -18,16 +18,16 @@ const (
 )
 
 const (
-  TERMINATION_SEQUENCE = "\x00" // Null empty ASCII string suffix.
+  TerminationSequence = "\x00" // Null empty ASCII string suffix.
 )
 
 // Packet type constants.
 // https://developer.valvesoftware.com/wiki/Source_RCON_Protocol#Packet_Type
 const (
-  EXEC_COMMAND   int32 = 2
-  AUTH           int32 = 3
-  AUTH_RESPONSE  int32 = 2
-  RESPONSE_VALUE int32 = 0
+  Exec          int32 = 2
+  Auth          int32 = 3
+  AuthResponse  int32 = 2
+  ResponseValue int32 = 0
 )
 
 // Rcon package errors.
@@ -90,8 +90,8 @@ func NewPacket(challenge, typ int32, body string) (packet *Packet) {
 // password.  The response packet is returned if authorization is successful
 // or a potential error.
 func (c *Client) Authorize(password string) (response *Packet, err error) {
-  if response, err = c.Send(AUTH, password); nil == err {
-    if response.Header.Type == AUTH_RESPONSE {
+  if response, err = c.Send(Auth, password); nil == err {
+    if response.Header.Type == AuthResponse {
       c.Authorized = true
     } else {
       err = ErrFailedAuthorization
@@ -107,7 +107,7 @@ func (c *Client) Authorize(password string) (response *Packet, err error) {
 // command.  The response packet is returned if the command executed successfully
 // or a potential error.
 func (c *Client) Execute(command string) (response *Packet, err error) {
-  return c.Send(EXEC_COMMAND, command)
+  return c.Send(Exec, command)
 }
 
 // Sends accepts the commands type and its string to execute to the clients server,
@@ -116,7 +116,7 @@ func (c *Client) Execute(command string) (response *Packet, err error) {
 // decompiled from its bytes into a Packet type for return. An error is returned
 // if send fails.
 func (c *Client) Send(typ int32, command string) (response *Packet, err error) {
-  if typ != AUTH && !c.Authorized {
+  if typ != Auth && !c.Authorized {
     err = ErrUnauthorizedRequest
     return
   }
@@ -151,8 +151,8 @@ func (c *Client) Send(typ int32, command string) (response *Packet, err error) {
     return
   }
 
-  if packet.Header.Type == AUTH && header.Type == RESPONSE_VALUE {
-    // Discard, empty SERVERDATA_RESPONSE_VALUE from authorization.
+  if packet.Header.Type == Auth && header.Type == ResponseValue {
+    // Discard, empty SERVERDATA_RESPOSE_VALUE from authorization.
     c.Connection.Read(make([]byte, header.Size-PacketHeaderSize))
 
     // Reread the packet header.
@@ -183,7 +183,7 @@ func (c *Client) Send(typ int32, command string) (response *Packet, err error) {
 
   response = new(Packet)
   response.Header = header
-  response.Body = strings.TrimRight(string(body), TERMINATION_SEQUENCE)
+  response.Body = strings.TrimRight(string(body), TerminationSequence)
 
   return
 }
