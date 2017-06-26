@@ -82,7 +82,7 @@ func (p Packet) Compile() (payload []byte, err error) {
 
 // NewPacket returns a pointer to a new Packet type.
 func NewPacket(challenge, typ int32, body string) (packet *Packet) {
-	size := int32(len([]byte(body)) + PacketHeaderSize + PacketPaddingSize)
+	size := int32(len([]byte(body)) + int(PacketHeaderSize+PacketPaddingSize))
 	return &Packet{Header{size, challenge, typ}, body}
 }
 
@@ -153,7 +153,7 @@ func (c *Client) Send(typ int32, command string) (response *Packet, err error) {
 
 	if packet.Header.Type == Auth && header.Type == ResponseValue {
 		// Discard, empty SERVERDATA_RESPOSE_VALUE from authorization.
-		c.Connection.Read(make([]byte, header.Size-PacketHeaderSize))
+		c.Connection.Read(make([]byte, header.Size-int32(PacketHeaderSize)))
 
 		// Reread the packet header.
 		if err = binary.Read(c.Connection, binary.LittleEndian, &header.Size); nil != err {
@@ -170,7 +170,7 @@ func (c *Client) Send(typ int32, command string) (response *Packet, err error) {
 		return
 	}
 
-	body := make([]byte, header.Size-PacketHeaderSize)
+	body := make([]byte, header.Size-int32(PacketHeaderSize))
 
 	n, err = c.Connection.Read(body)
 
